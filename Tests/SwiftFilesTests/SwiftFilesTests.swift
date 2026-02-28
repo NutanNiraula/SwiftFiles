@@ -54,6 +54,31 @@ import Foundation
         #expect(Array(sources.subfolders).count == 1)
     }
     
+    @Test func treeParserDoesNotDropIndentedEntriesAfterFile() throws {
+        let root = Folder(path: tempFolder.path / "MalformedTree")
+        try root.create()
+        
+        try FileTree("""
+        root.txt
+          nested.txt
+        """).create(in: root)
+        
+        #expect(File(path: root.path / "root.txt").exists)
+        #expect(File(path: root.path / "nested.txt").exists)
+    }
+    
+    @Test func treeParserSupportsTabs() throws {
+        let root = Folder(path: tempFolder.path / "TabTree")
+        try root.create()
+        
+        try FileTree("""
+        Sources/
+        \tmain.swift
+        """).create(in: root)
+        
+        #expect(File(path: root.path / "Sources/main.swift").exists)
+    }
+    
     @Test func treeBuilder() throws {
         let rootPath = tempFolder.path / "BuilderProject"
         
@@ -68,7 +93,7 @@ import Foundation
             Tests/
              Test.swift
             """)
-            Folder("Docs") // Explicit folder (no extension)
+            Folder("Docs") { } // Explicit folder (no extension)
         }
         
         // Build at path
@@ -113,6 +138,25 @@ import Foundation
         #expect(file.path.isFile)
         #expect(!file.path.isFolder)
         #expect(file.path.size == 5)
+    }
+    
+    @Test func pathEqualityIsCaseSensitive() {
+        let upper = Path("/tmp/CaseSensitive")
+        let lower = Path("/tmp/casesensitive")
+        
+        #expect(upper != lower)
+        #expect(Set([upper, lower]).count == 2)
+    }
+    
+    @Test func missingNodeClassification() {
+        let missing = Path.temp / UUID().uuidString / "ghost.txt"
+        
+        switch missing.node {
+        case .missing(let p):
+            #expect(p == missing)
+        default:
+            #expect(Bool(false))
+        }
     }
     
     // MARK: - File Tests
@@ -209,21 +253,22 @@ import Foundation
     
     @Test func folderBuilder() throws {
         // Define tree using Result Builder
-        let appFolder = Folder((tempFolder.path / "MyApp").string) {
+        let appFolder = Folder("MyApp") {
             Folder("Sources") {
                 File("main.swift") { "print('Hello')" }
             }
-            Folder("Tests")
+            Folder("Tests") { }
             File("README.md") { "# MyApp" }
         }
         
-        try appFolder.create()
+        try appFolder.create(in: tempFolder)
         
-        #expect(appFolder.exists)
-        #expect(File(path: appFolder.path / "README.md").exists)
-        #expect(try File(path: appFolder.path / "README.md").read() == "# MyApp")
+        let appFolderPath = tempFolder.path / "MyApp"
+        #expect(Folder(path: appFolderPath).exists)
+        #expect(File(path: appFolderPath / "README.md").exists)
+        #expect(try File(path: appFolderPath / "README.md").read() == "# MyApp")
         
-        let sources = Folder(path: appFolder.path / "Sources")
+        let sources = Folder(path: appFolderPath / "Sources")
         #expect(sources.exists)
         #expect(File(path: sources.path / "main.swift").exists)
     }
@@ -264,7 +309,7 @@ import Foundation
         
         // Smoke test for API existence and non-crashing behavior
         try file.permissions.readOnly()
-        try file.permissions.writeable()
+        try file.permissions.writable()
         try file.permissions.executable()
     }
     

@@ -7,11 +7,13 @@ public protocol FSNode {
 public enum FileSystemNode {
     case file(File)
     case folder(Folder)
+    case missing(Path)
     
     public var path: Path {
         switch self {
         case .file(let file): return file.path
         case .folder(let folder): return folder.path
+        case .missing(let path): return path
         }
     }
 }

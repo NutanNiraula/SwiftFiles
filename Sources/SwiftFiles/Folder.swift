@@ -9,6 +9,16 @@ public struct Folder: CustomStringConvertible, FSNode {
         self.childrenToCreate = nil
     }
     
+    public init(path: String) {
+        self.path = Path(path)
+        self.childrenToCreate = nil
+    }
+    
+    @available(*, deprecated, message: "Use init(path:) for filesystem paths.")
+    public init(_ path: String) {
+        self.init(path: path)
+    }
+    
     public func copy(to folder: Folder) throws -> Folder {
         let destination = folder.path / name
         try FileManager.default.copyItem(at: path.url, to: destination.url)
@@ -25,11 +35,6 @@ public struct Folder: CustomStringConvertible, FSNode {
         let destination = path.parent / newName
         try FileManager.default.moveItem(at: path.url, to: destination.url)
         return Folder(path: destination)
-    }
-    
-    public init(_ path: String) {
-        self.path = Path(path)
-        self.childrenToCreate = nil
     }
     
     public init(_ name: String, @FolderBuilder content: () -> [FileSystemItem] = { [] }) {

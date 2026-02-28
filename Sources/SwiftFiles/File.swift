@@ -68,7 +68,7 @@ public struct File: CustomStringConvertible, FileSystemItem, FSNode {
     }
     
     public func write(_ data: Data) throws {
-        try data.write(to: path.url)
+        try data.write(to: path.url, options: .atomic)
     }
     
     public func append(_ string: String, encoding: String.Encoding = .utf8) throws {

@@ -44,7 +44,7 @@ path.parent
 path.extensionName
 ```
 
-`Path` is `Sendable`, cheap to copy, and uses `URL` internally to avoid `NSString` bridging.
+`Path` is `Sendable`, cheap to copy, and uses `URL` internally to avoid `NSString` bridging. Equality and hashing are case-sensitive and based on standardized path identity.
 
 ### File and Folder
 
@@ -145,7 +145,7 @@ try file.delete()
 ## Folder Operations
 
 ```swift
-let folder = Folder("~/project")
+let folder = Folder(path: "~/project")
 
 // Shallow contents
 folder.files       // LazyFiles
@@ -180,7 +180,7 @@ try logs.copy(to: backupFolder)
 
 ```swift
 try file.permissions.readOnly()
-try file.permissions.writeable()
+try file.permissions.writable()
 try file.permissions.executable()
 ```
 
@@ -200,7 +200,7 @@ let quota: Int = 1.gb
 SwiftFiles includes a lightweight filesystem watcher built on FSEvents and `AsyncStream`.
 
 ```swift
-let folder = Folder("~/project/src")
+let folder = Folder(path: "~/project/src")
 
 for await event in folder.watch().events {
     print(event.path, event.kind)
@@ -253,7 +253,8 @@ Each call to `.events` creates an independent `FSEventStream`. Multiple consumer
 
 ## Error Handling
 
-All I/O operations throw `FileSystemError`:
+Foundation I/O errors are propagated for system failures (for example: missing files, permission denied).
+`FileSystemError` is used for SwiftFiles-specific validation:
 
 ```swift
 public enum FileSystemError: Error {

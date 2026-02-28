@@ -125,6 +125,55 @@ import Foundation
         #expect(result?.kind == .modified)
     }
     
+    @Test func fileDeletion() async throws {
+        let filePath = tempFolder.path / "delete.txt"
+        try "Delete me".write(to: filePath.url, atomically: false, encoding: .utf8)
+        
+        // Wait for creation to settle
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+        
+        let result = await withTaskGroup(of: TestResult.self) { group -> WatchEvent? in
+            group.addTask { [tempFolder] in
+                guard let tempFolder else { return .timeout }
+                let watcher = tempFolder.watch(latency: 0.0)
+                for await event in watcher.events {
+                    if event.path.name == "delete.txt" && event.kind == .deleted {
+                        return .event(event)
+                    }
+                }
+                return .timeout
+            }
+            
+            group.addTask { [filePath] in
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                try? FileManager.default.removeItem(at: filePath.url)
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                return .timeout
+            }
+            
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                return .timeout
+            }
+            
+            for await res in group {
+                switch res {
+                case .event(let e):
+                    group.cancelAll()
+                    return e
+                case .timeout:
+                    group.cancelAll()
+                    return nil
+                }
+            }
+            return nil
+        }
+        
+        #expect(result != nil)
+        #expect(result?.kind == .deleted)
+        #expect(result?.path.name == "delete.txt")
+    }
+    
     @Test func cancellationStopsStream() async throws {
         // Stream should loop until cancelled
         let watcher = tempFolder.watch(latency: 0.1)

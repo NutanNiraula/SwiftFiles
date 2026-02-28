@@ -38,24 +38,33 @@ public extension Sequence where Element == Folder {
 public struct Permissions {
     let path: Path
     
+    private func currentPermissions() throws -> Int {
+        let attrs = try FileManager.default.attributesOfItem(atPath: path.string)
+        guard let current = attrs[.posixPermissions] as? Int else {
+            throw FileSystemError.permissionsFailed(path: path.string)
+        }
+        return current
+    }
+    
     public func readOnly() throws {
-        try FileManager.default.setAttributes([.posixPermissions: 0o444], ofItemAtPath: path.string)
+        let current = try currentPermissions()
+        let updated = current & ~0o222
+        try FileManager.default.setAttributes([.posixPermissions: updated], ofItemAtPath: path.string)
     }
     
     public func executable() throws {
-        let attrs = try FileManager.default.attributesOfItem(atPath: path.string)
-        guard let current = attrs[.posixPermissions] as? Int else {
-            throw FileSystemError.permissionsFailed(path: path.string)
-        }
+        let current = try currentPermissions()
         try FileManager.default.setAttributes([.posixPermissions: current | 0o111], ofItemAtPath: path.string)
     }
     
-    public func writeable() throws {
-        let attrs = try FileManager.default.attributesOfItem(atPath: path.string)
-        guard let current = attrs[.posixPermissions] as? Int else {
-            throw FileSystemError.permissionsFailed(path: path.string)
-        }
+    public func writable() throws {
+        let current = try currentPermissions()
         try FileManager.default.setAttributes([.posixPermissions: current | 0o222], ofItemAtPath: path.string)
+    }
+    
+    @available(*, deprecated, renamed: "writable()")
+    public func writeable() throws {
+        try writable()
     }
 }
 

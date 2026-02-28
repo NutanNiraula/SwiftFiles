@@ -103,21 +103,23 @@ public struct Path: Hashable, Sendable, CustomStringConvertible {
     // MARK: - Node Type
     
     public var node: FileSystemNode {
-        if isFolder {
-            return .folder(Folder(path: self))
-        } else {
-            return .file(File(path: self))
-        }
+        if isFolder { return .folder(Folder(path: self)) }
+        if isFile { return .file(File(path: self)) }
+        return .missing(self)
     }
     
     // MARK: - Hashable
     
+    private var identityPath: String {
+        _url.standardizedFileURL.path
+    }
+    
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(string.lowercased())
+        hasher.combine(identityPath)
     }
     
     public static func == (lhs: Path, rhs: Path) -> Bool {
-        lhs.string.caseInsensitiveCompare(rhs.string) == .orderedSame
+        lhs.identityPath == rhs.identityPath
     }
 }
 

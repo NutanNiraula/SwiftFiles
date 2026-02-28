@@ -39,8 +39,12 @@ public struct FileTree: FileSystemItem, CustomStringConvertible {
 
 public enum TreeParser {
     public static func parse(_ input: String) -> [FileSystemItem] {
-        let lines = input.split(separator: "\n").map(String.init)
+        let lines = input.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         return parseLines(lines)
+    }
+    
+    private static func indentationCount(of line: String) -> Int {
+        line.prefix { $0 == " " || $0 == "\t" }.count
     }
     
     private static func parseLines(_ lines: [String]) -> [FileSystemItem] {
@@ -49,45 +53,50 @@ public enum TreeParser {
         
         while i < lines.count {
             let line = lines[i]
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             
             // Skip empty lines
-            if line.trimmingCharacters(in: .whitespaces).isEmpty {
+            if trimmed.isEmpty {
                 i += 1
                 continue
             }
             
-            let indent = line.prefix(while: { $0 == " " || $0 == "\t" }).count
-            let name = line.trimmingCharacters(in: .whitespaces)
-            
-            // Collect children lines (lines with greater indentation)
-            var childrenLines: [String] = []
-            var j = i + 1
-            while j < lines.count {
-                let nextLine = lines[j]
-                if nextLine.trimmingCharacters(in: .whitespaces).isEmpty {
-                    j += 1
-                    continue
-                }
-                
-                let nextIndent = nextLine.prefix(while: { $0 == " " || $0 == "\t" }).count
-                if nextIndent <= indent {
-                    break
-                }
-                
-                childrenLines.append(nextLine)
-                j += 1
-            }
+            let indent = indentationCount(of: line)
+            let name = trimmed
             
             // Process the item
             if name.hasSuffix("/") {
                 let folderName = String(name.dropLast())
+                
+                // Collect children lines (lines with greater indentation)
+                var childrenLines: [String] = []
+                var j = i + 1
+                while j < lines.count {
+                    let nextLine = lines[j]
+                    let nextTrimmed = nextLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if nextTrimmed.isEmpty {
+                        j += 1
+                        continue
+                    }
+                    
+                    let nextIndent = indentationCount(of: nextLine)
+                    if nextIndent <= indent {
+                        break
+                    }
+                    
+                    childrenLines.append(nextLine)
+                    j += 1
+                }
+                
                 let children = parseLines(childrenLines)
                 items.append(Folder(name: folderName, children: children))
+                i = j
             } else {
                 items.append(File(name: name, content: nil))
+                // Only advance one line for files so indented following lines
+                // are still parsed instead of silently dropped.
+                i += 1
             }
-            
-            i = j
         }
         
         return items
