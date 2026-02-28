@@ -113,11 +113,11 @@ public struct Path: Hashable, Sendable, CustomStringConvertible {
     // MARK: - Hashable
     
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(string)
+        hasher.combine(string.lowercased())
     }
     
     public static func == (lhs: Path, rhs: Path) -> Bool {
-        lhs.string == rhs.string
+        lhs.string.caseInsensitiveCompare(rhs.string) == .orderedSame
     }
 }
 

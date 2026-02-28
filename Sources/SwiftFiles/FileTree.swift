@@ -56,7 +56,7 @@ public enum TreeParser {
                 continue
             }
             
-            let indent = line.prefix(while: { $0 == " " }).count
+            let indent = line.prefix(while: { $0 == " " || $0 == "\t" }).count
             let name = line.trimmingCharacters(in: .whitespaces)
             
             // Collect children lines (lines with greater indentation)
@@ -69,7 +69,7 @@ public enum TreeParser {
                     continue
                 }
                 
-                let nextIndent = nextLine.prefix(while: { $0 == " " }).count
+                let nextIndent = nextLine.prefix(while: { $0 == " " || $0 == "\t" }).count
                 if nextIndent <= indent {
                     break
                 }
