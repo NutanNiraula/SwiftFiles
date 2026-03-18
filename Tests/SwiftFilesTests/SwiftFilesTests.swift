@@ -312,6 +312,77 @@ import Foundation
         try file.permissions.writable()
         try file.permissions.executable()
     }
+
+    @Test func globPatternMatching() throws {
+        let root = Folder(path: tempFolder.path / "GlobRoot")
+        try root.create()
+
+        try FileTree("""
+        Sources/
+          App.swift
+          Utils/
+            Helper.swift
+        Tests/
+          AppTests.swift
+        .hidden
+        """).create(in: root)
+
+        let swiftFiles = root.glob("Sources/**/*.swift")
+        let swiftNames = Set(swiftFiles.map { $0.path.name })
+        #expect(swiftNames == ["App.swift", "Helper.swift"])
+
+        let hiddenMatches = root.glob("**/*", includeHidden: false).map { $0.path.name }
+        #expect(!hiddenMatches.contains(".hidden"))
+
+        let pattern = GlobPattern("*.swift")
+        #expect(pattern.matchesName("App.swift"))
+        #expect(!pattern.matchesName("App.swift.bak"))
+        #expect(GlobPattern("T?st").matchesName("Test"))
+        #expect(GlobPattern("[a-c]oo").matchesName("boo"))
+        #expect(!GlobPattern("[abc").matchesName("a"))
+
+        let path = root.path / "Sources" / "App.swift"
+        let fullPattern = (root.path.string as NSString).appendingPathComponent("Sources/*.swift")
+        #expect(path.matches(glob: fullPattern))
+    }
+
+    @Test func templateVariablesRenderAndResolve() {
+        var vars: TemplateVariables = ["name": "MyApp", "author": "Alice"]
+        vars.year = "2026"
+
+        let rendered = vars.render("{{name}} by {{author}}")
+        #expect(rendered == "MyApp by Alice")
+        #expect(vars.year == "2026")
+        #expect(vars.hasUnresolved("{{missing}}"))
+        #expect(vars.render("{{missing}} {{name}}").contains("{{missing}}"))
+
+        let chained: TemplateVariables = ["a": "{{b}}", "b": "X"]
+        #expect(chained.render("{{a}}") == "{{b}}")
+    }
+
+    @Test func templateFileAndFolderRendering() throws {
+        let vars: TemplateVariables = ["module": "Auth", "name": "Hello"]
+
+        let templateFile = File("{{name}}.txt") { "{{name}} world" }
+        let renderedFile = templateFile.render(with: vars)
+        #expect(renderedFile.path.name == "Hello.txt")
+
+        let diskFile = File(path: tempFolder.path / "template.txt")
+        try diskFile.write("{{name}} world")
+        try diskFile.renderInPlace(with: vars)
+        #expect(try diskFile.read() == "Hello world")
+
+        let templateFolder = Folder("{{module}}") {
+            File("{{module}}View.swift") { "struct {{module}}View {}" }
+            Folder("Sub{{module}}") { }
+        }
+        let renderedFolder = templateFolder.render(with: vars)
+        try renderedFolder.create(in: tempFolder)
+
+        let basePath = tempFolder.path / "Auth"
+        #expect(File(path: basePath / "AuthView.swift").exists)
+        #expect(Folder(path: basePath / "SubAuth").exists)
+    }
     
     // MARK: - Error Tests
     

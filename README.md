@@ -165,6 +165,23 @@ try folder.delete()
 
 ---
 
+## Glob
+
+```swift
+let root = Folder.current
+let swiftFiles = root.glob("Sources/**/*.swift")
+let testFiles = root.globFiles("**/*Tests.swift")
+let allEntries = root.glob("**/*", includeHidden: true)
+```
+
+Supported glob syntax:
+- `*` within a single path component
+- `**` across path components
+- `?` single-character match
+- `[abc]` / `[a-z]` character classes
+
+---
+
 ## Bulk Operations
 
 ```swift
@@ -191,6 +208,22 @@ try file.permissions.executable()
 ```swift
 let limit: Int = 10.mb
 let quota: Int = 1.gb
+```
+
+---
+
+## Templates
+
+```swift
+let vars: TemplateVariables = ["module": "Auth"]
+let template = Folder("{{module}}") {
+    File("{{module}}View.swift") { "struct {{module}}View {}" }
+}
+let rendered = template.render(with: vars)
+try rendered.create(in: Folder.current)
+
+let readme = File(path: Folder.current.path / "README.md")
+try readme.renderInPlace(with: ["project": "SwiftFiles"])
 ```
 
 ---
